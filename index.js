@@ -51,18 +51,49 @@ function Cookies(request, response, options) {
   }
 }
 
+Cookies.prototype.checkMultiple = function() {
+  var header = this.request.headers["cookie"]
+  var cookieItemCount = {}
+
+  if (!header) return
+
+  var cookiesList = header.split('; ')
+  var multipleCookie = []
+  var cookieItemName
+
+  for (var i = 0; i < cookiesList.length; i++) {
+    cookieItemName = cookiesList[i].split('=')[0]
+
+    if (cookieItemCount[cookieItemName] !== undefined) {
+      cookieItemCount[cookieItemName]++
+    } else {
+      cookieItemCount[cookieItemName] = 1
+    }
+  }
+
+  for (var cookie in cookieItemCount) {
+    if (cookieItemCount[cookie] > 1) {
+      multipleCookie.push(cookie)
+    }
+  }
+
+  return multipleCookie
+}
+
 Cookies.prototype.get = function(name, opts) {
   var sigName = name + ".sig"
     , header, match, value, remote, data, index
     , signed = opts && opts.signed !== undefined ? opts.signed : !!this.keys
 
   header = this.request.headers["cookie"]
+
   if (!header) return
 
   match = header.match(getPattern(name))
   if (!match) return
 
-  value = match[1]
+  value = match[0].split('=')[1]
+
   if (!opts || !signed) return value
 
   remote = this.get(sigName)
@@ -189,7 +220,8 @@ function getPattern(name) {
   return cache[name] = new RegExp(
     "(?:^|;) *" +
     name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") +
-    "=([^;]*)"
+    "=([^;]*)",
+    "g"
   )
 }
 
